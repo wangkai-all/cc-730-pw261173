@@ -1,0 +1,9 @@
+measurement_id,source,batch,condition,temperature_c,speed_m_min,loss_pct,source_file
+M-0105,S3,B-SHIFT,C2,150.632,40.594,9.8205,measurements_B-SHIFT.csv
+M-0106,S3,B-SHIFT,C2,151.269,37.8,9.9568,measurements_B-SHIFT.csv
+M-0107,S3,B-SHIFT,C2,149.474,38.76,10.287,measurements_B-SHIFT.csv
+M-0108,S3,B-SHIFT,C2,149.915,39.425,9.3897,measurements_B-SHIFT.csv
+M-0109,S3,B-SHIFT,C2,152.628,39.62,10.2996,measurements_B-SHIFT.csv
+M-0110,S3,B-SHIFT,C2,152.322,39.259,9.8707,measurements_B-SHIFT.csv
+M-0111,S3,B-SHIFT,C2,151.502,39.618,10.0261,measurements_B-SHIFT.csv
+M-0112,S3,B-SHIFT,C2,150.412,38.787,9.5469,measurements_B-SHIFT.csv

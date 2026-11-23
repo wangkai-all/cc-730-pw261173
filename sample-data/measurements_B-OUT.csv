@@ -1,0 +1,9 @@
+measurement_id,source,batch,condition,temperature_c,speed_m_min,loss_pct,source_file
+M-0097,S3,B-OUT,C2,149.873,43.273,8.087,measurements_B-OUT.csv
+M-0098,S3,B-OUT,C2,149.87,42.971,8.048,measurements_B-OUT.csv
+M-0099,S3,B-OUT,C2,149.177,41.395,8.5189,measurements_B-OUT.csv
+M-0100,S3,B-OUT,C2,151.33,42.074,8.3335,measurements_B-OUT.csv
+M-0101,S3,B-OUT,C2,149.276,40.123,8.536,measurements_B-OUT.csv
+M-0102,S3,B-OUT,C2,149.607,41.015,10.5623,measurements_B-OUT.csv
+M-0103,S3,B-OUT,C2,150.121,41.562,8.0384,measurements_B-OUT.csv
+M-0104,S3,B-OUT,C2,150.288,42.541,8.5848,measurements_B-OUT.csv

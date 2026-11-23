@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工艺关系分析站 · 批次影响诊断</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-7: #6250d6;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --status-violet: #6250d6;
+  --delta-up: #b03030;
+  --delta-down: #1c5cab;
+  --wash: rgba(42,120,214,0.08);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --ink-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-7: #9085e9;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #e66767;
+  --status-violet: #9085e9;
+  --delta-up: #e66767;
+  --delta-down: #6da7ec;
+  --wash: rgba(57,135,229,0.12);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px; line-height: 1.55;
+}
+header.app-header {
+  padding: 22px 28px 16px; border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 650; }
+header .sub { color: var(--ink-2); margin: 0; max-width: 980px; }
+.layout { display: grid; grid-template-columns: 230px 1fr; gap: 0; }
+nav.side {
+  position: sticky; top: 0; align-self: start; height: 100vh;
+  padding: 18px 14px; border-right: 1px solid var(--border); background: var(--surface);
+  overflow-y: auto;
+}
+nav.side a {
+  display: block; padding: 7px 10px; border-radius: 8px; color: var(--ink-2);
+  text-decoration: none; font-size: 13px;
+}
+nav.side a:hover { background: var(--wash); color: var(--ink); }
+main { padding: 22px 28px 60px; min-width: 0; max-width: 1180px; }
+section.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 20px; margin-bottom: 22px;
+}
+section.card > h2 { margin: 0 0 4px; font-size: 17px; font-weight: 650; }
+section.card > .sec-sub { color: var(--ink-2); margin: 0 0 14px; font-size: 13px; }
+h3.minor { font-size: 14px; font-weight: 650; margin: 18px 0 8px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 12px 0; }
+.stat-tile { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--page); }
+.stat-label { color: var(--ink-2); font-size: 12px; }
+.stat-value { font-size: 26px; font-weight: 650; margin: 2px 0; }
+.stat-sub { color: var(--ink-muted); font-size: 12px; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+table.data-table th, table.data-table td {
+  text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid);
+}
+table.data-table th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+table.data-table td.num, .num { font-variant-numeric: tabular-nums; }
+table.data-table tr.row-excluded { opacity: 0.45; background: var(--wash); }
+.badge {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px;
+  margin: 1px 3px 1px 0; white-space: nowrap;
+}
+.badge.good { background: color-mix(in srgb, var(--status-good) 15%, transparent); color: var(--status-good); }
+.badge.warn { background: color-mix(in srgb, var(--status-warning) 22%, transparent); color: var(--ink); }
+.badge.muted { background: var(--grid); color: var(--ink-2); }
+.badge.status-critical { background: color-mix(in srgb, var(--status-critical) 16%, transparent); color: var(--status-critical); }
+.badge.status-serious { background: color-mix(in srgb, var(--status-serious) 20%, transparent); color: var(--status-serious); }
+.badge.status-warning { background: color-mix(in srgb, var(--status-warning) 26%, transparent); color: var(--ink); }
+.badge.status-violet { background: color-mix(in srgb, var(--status-violet) 16%, transparent); color: var(--status-violet); }
+.callout { border-radius: 12px; padding: 12px 16px; margin: 12px 0; border: 1px solid var(--border); }
+.callout.critical { border-color: var(--status-critical); background: color-mix(in srgb, var(--status-critical) 8%, transparent); }
+.callout.warning { border-color: var(--status-warning); background: color-mix(in srgb, var(--status-warning) 10%, transparent); }
+.callout-title { font-weight: 650; margin-bottom: 6px; }
+.callout ul { margin: 6px 0 0; padding-left: 20px; }
+.note { color: var(--ink-2); font-size: 13px; }
+.warn-text { color: var(--status-serious); font-weight: 600; }
+.delta-up { color: var(--delta-up); font-weight: 650; }
+.delta-down { color: var(--delta-down); font-weight: 650; }
+.sub { color: var(--ink-muted); font-size: 12px; }
+.chart-wrap { width: 100%; overflow: hidden; margin: 8px 0; }
+.pra-svg { display: block; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } .layout { grid-template-columns: 1fr; } nav.side { display: none; } }
+.pra-svg .grid { stroke: var(--grid); stroke-width: 1; }
+.pra-svg .axis { stroke: var(--axis); stroke-width: 1; }
+.pra-svg .zero-line { stroke: var(--axis); stroke-width: 1.2; }
+.pra-svg .threshold-line { stroke: var(--status-warning); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.pra-svg .tick { fill: var(--ink-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pra-svg .axis-label { fill: var(--ink-2); font-size: 12px; }
+.pra-svg .legend-text { fill: var(--ink-2); font-size: 12px; }
+.pra-svg .annot { fill: var(--ink-2); font-size: 11px; }
+.pra-svg .pt { stroke: var(--surface); stroke-width: 2; }
+.pra-svg .pt.dimmed { opacity: 0.18; }
+.pra-svg .hit { cursor: pointer; }
+.pra-svg .hit:focus-visible { stroke: var(--series-1); stroke-width: 2; }
+.pra-svg .bar-label, .pra-svg .bar-value { font-size: 11.5px; }
+.pra-tooltip {
+  position: fixed; z-index: 50; display: none; pointer-events: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 11px; font-size: 12px; box-shadow: 0 6px 22px rgba(0,0,0,0.18); max-width: 320px;
+}
+.pra-tooltip .tip-row { display: flex; gap: 7px; align-items: center; color: var(--ink-2); }
+.pra-tooltip .tip-title { color: var(--ink); font-weight: 650; margin-bottom: 2px; }
+.tip-swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 2px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 12.5px; }
+.legend-item .dot { width: 10px; height: 10px; border-radius: 50%; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 10px 0; }
+select, input[type="number"], input[type="file"] {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--axis);
+  border-radius: 8px; padding: 7px 10px; font: inherit;
+}
+button {
+  background: var(--series-1); color: #fff; border: none; border-radius: 8px;
+  padding: 8px 14px; font: inherit; cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+button.btn-small { padding: 4px 10px; font-size: 12.5px; }
+button.ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--axis); }
+.table-view { display: none; max-height: 320px; overflow: auto; border: 1px solid var(--grid); border-radius: 10px; margin-top: 8px; }
+.table-view table { margin: 0; font-size: 12px; }
+.empty-warn { padding: 30px; text-align: center; color: var(--ink-muted); border: 1px dashed var(--axis); border-radius: 10px; }
+.import-line { font-size: 12.5px; padding: 4px 0; color: var(--ink-2); }
+.import-line.crit { color: var(--status-critical); }
+.import-line.muted { color: var(--ink-muted); }
+.pred-inputs { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+.pred-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-2); }
+.pred-inputs input, .pred-inputs select { width: 150px; }
+footer.app-footer { padding: 18px 28px 40px; color: var(--ink-muted); font-size: 12px; border-top: 1px solid var(--border); }
+code { background: var(--grid); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+.scroll-table { max-height: 360px; overflow: auto; border: 1px solid var(--grid); border-radius: 10px; }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <h1>工艺关系分析站 <span style="font-weight:400;color:var(--ink-muted);font-size:14px;">虚构教学数据 · 温度 / 速度 → 损耗</span></h1>
+  <p class="sub">目标：拟合温度、速度与损耗的关系，并重点排查结论是否被少数来源批次带偏。所有“排除批次”都是可恢复的分析情景，原始数据永不修改，可疑批次不会被自动当作错误删除。</p>
+  <div class="controls" style="margin-bottom:0">
+    <button class="ghost" id="theme-toggle" type="button">切换深色 / 浅色</button>
+    <button class="ghost" id="table-toggle" type="button">显示全部表格视图（无障碍）</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="side" aria-label="页面章节">
+    <a href="#sec-data">① 数据与导入台账</a>
+    <a href="#sec-fit">② 系数：OLS 与稳健</a>
+    <a href="#sec-scatter">③ 关系散点与拟合线</a>
+    <a href="#sec-diag">④ 单点与整批诊断</a>
+    <a href="#sec-scenario">⑤ 排除批次情景（真实重拟合）</a>
+    <a href="#sec-lbo">⑥ 批次影响总览</a>
+    <a href="#sec-cv">⑦ 批次分组验证</a>
+    <a href="#sec-pred">⑧ 业务预测与外推</a>
+    <a href="#sec-raw">⑨ 原始记录</a>
+  </nav>
+
+  <main>
+    <!-- ① 数据 -->
+    <section class="card" id="sec-data">
+      <h2>① 数据与导入台账</h2>
+      <p class="sec-sub">每条记录保留来源、批次与测量编号；<code>measurement_id</code> 全局去重，重复测量文件不重复计权。</p>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="stat-label">计入测量数</div><div class="stat-value" id="kpi-rows">—</div><div class="stat-sub">去重后</div></div>
+        <div class="stat-tile"><div class="stat-label">批次</div><div class="stat-value" id="kpi-batches">—</div><div class="stat-sub">跨来源分组</div></div>
+        <div class="stat-tile"><div class="stat-label">来源</div><div class="stat-value" id="kpi-sources">—</div><div class="stat-sub">S1 / S2 / S3</div></div>
+        <div class="stat-tile"><div class="stat-label">重复跳过测量</div><div class="stat-value" id="kpi-dup">—</div><div class="stat-sub" id="kpi-dup-sub"></div></div>
+      </div>
+      <div class="controls">
+        <label class="btn ghost" style="cursor:pointer">
+          导入 CSV 文件（可多选）
+          <input type="file" id="file-input" accept=".csv,text/csv" multiple style="display:none">
+        </label>
+        <button class="ghost" id="reimport-dup" type="button">重新导入 B-04 文件（演示去重）</button>
+        <button class="ghost" id="reset-data" type="button">恢复内置示例数据</button>
+      </div>
+      <div id="import-result"></div>
+      <h3 class="minor">导入事件台账</h3>
+      <div class="scroll-table">
+        <table class="data-table">
+          <thead><tr><th>事件</th><th>文件</th><th>来源</th><th>批次</th><th>文件行数</th><th>新增</th><th>重复跳过</th><th>状态</th></tr></thead>
+          <tbody id="import-log"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ② 系数 -->
+    <section class="card" id="sec-fit">
+      <h2>② 模型系数：普通最小二乘（OLS）→ Huber 稳健方案</h2>
+      <p class="sec-sub">连续变量按训练批次的均值与总体标准差标准化（均值/标准差只来自训练数据）；工况 C1 为基准，C2/C3 为哑变量。物理单位系数由标准化系数反变换得到。</p>
+      <div id="model-status"></div>
+      <div class="scroll-table">
+        <table class="data-table">
+          <thead><tr><th>项</th><th>OLS 系数（标准化）</th><th>Huber 系数（标准化）</th><th>OLS 物理单位（含稳健对照）</th><th>相对全量 OLS 的真实变化</th></tr></thead>
+          <tbody id="coef-tbody"></tbody>
+        </table>
+      </div>
+      <p class="note">Huber 调节常数固定 k=1.345（标准默认，非数据驱动选择）；MAD 尺度与 IRLS 权重只在训练批次上估计。标准误：OLS 为经典同方差公式，Huber 为末轮加权最小二乘协方差。</p>
+      <div class="table-view"><table class="data-table"><thead><tr><th>项</th><th>OLS β</th><th>Huber β</th><th>OLS 物理单位</th></tr></thead><tbody id="coef-table-view"></tbody></table></div>
+    </section>
+
+    <!-- ③ 散点 -->
+    <section class="card" id="sec-scatter">
+      <h2>③ 温度—损耗关系与拟合线</h2>
+      <p class="sec-sub">点按来源着色（颜色跟随来源实体，不随筛选重排）；排除情景下该批次点淡化显示但不删除。拟合线固定速度为训练均值、工况 C1。</p>
+      <div class="legend-row" id="scatter-legend"></div>
+      <div class="chart-wrap" id="chart-scatter"></div>
+      <div class="table-view"><table class="data-table"><thead><tr><th>温度 °C</th><th>损耗 %</th><th>来源</th><th>批次</th><th>工况</th></tr></thead><tbody id="scatter-table-view"></tbody></table></div>
+    </section>
+
+    <!-- ④ 诊断 -->
+    <section class="card" id="sec-diag">
+      <h2>④ 单点异常与整批偏移：分开诊断</h2>
+      <p class="sec-sub">单点看学生化残差、杠杆 h、Cook’s D 与 DFFITS；整批看批次平均残差、内部一致性与 Huber 降权。单条异常与整批恒定偏移是两类不同问题。</p>
+      <div class="grid-2">
+        <div>
+          <h3 class="minor">杠杆 × 学生化残差（气泡 = Cook’s D）</h3>
+          <div class="chart-wrap" id="chart-influence"></div>
+        </div>
+        <div>
+          <h3 class="minor">残差 × 拟合值</h3>
+          <div class="chart-wrap" id="chart-residual"></div>
+        </div>
+      </div>
+      <div id="influence-notes" class="note"></div>
+      <div class="table-view"><table class="data-table"><thead><tr><th>测量编号</th><th>批次</th><th>学生化残差</th><th>杠杆</th><th>Cook's D</th><th>DFFITS</th></tr></thead><tbody id="influence-table-view"></tbody></table></div>
+      <h3 class="minor">批次级诊断汇总</h3>
+      <div class="scroll-table">
+        <table class="data-table">
+          <thead><tr><th>批次</th><th>来源</th><th>工况</th><th>n</th><th>平均残差</th><th>最大|学生化|</th><th>最大杠杆</th><th>最大 Cook’s D</th><th>Huber 最小权重</th><th>诊断标记</th></tr></thead>
+          <tbody id="batch-tbody"></tbody>
+        </table>
+      </div>
+      <p class="note">阈值：单点异常 |学生化残差| &gt; 3；高杠杆 h &gt; 3p/n；强影响 Cook’s D &gt; 4/n；整批偏移要求批次平均残差 &gt; 1.5σ 且批次内部标准差 &lt; σ（同向一致偏移）。</p>
+    </section>
+
+    <!-- ⑤ 情景 -->
+    <section class="card" id="sec-scenario">
+      <h2>⑤ 排除来源批次：真实重新拟合，不是单点近似</h2>
+      <p class="sec-sub">选择一个批次后，系统排除它的全部测量，重新估计标准化参数并重新求解 QR / IRLS。Cook’s D、DFFITS 等单点影响指标只作旁证，不能替代整批删除。</p>
+      <div class="controls">
+        <label>分析情景
+          <select id="scenario-select"></select>
+        </label>
+        <label>对照方法
+          <select id="method-select">
+            <option value="ols">OLS（普通最小二乘）</option>
+            <option value="huber">Huber 稳健</option>
+          </select>
+        </label>
+      </div>
+      <div id="scenario-detail"></div>
+    </section>
+
+    <!-- ⑥ LBO 总览 -->
+    <section class="card" id="sec-lbo">
+      <h2>⑥ 整批删除影响总览（温度系数变化）</h2>
+      <p class="sec-sub" id="lbo-note"></p>
+      <div class="chart-wrap" id="chart-lbo"></div>
+      <div class="table-view"><table class="data-table"><thead><tr><th>排除批次</th><th>Δ 温度系数</th></tr></thead><tbody id="lbo-table-view"></tbody></table></div>
+    </section>
+
+    <!-- ⑦ 验证 -->
+    <section class="card" id="sec-cv">
+      <h2>⑦ 批次分组交叉验证</h2>
+      <p class="sec-sub">按整批划分 5 折，验证折的任何测量都不参与标准化、尺度估计或系数求解；OLS 与 Huber 使用同一折分配。</p>
+      <div class="chart-wrap" id="chart-cv"></div>
+      <div class="table-view"><table class="data-table"><thead><tr><th>验证折</th><th>OLS RMSE</th><th>Huber RMSE</th></tr></thead><tbody id="cv-table-view"></tbody></table></div>
+      <div id="cv-summary"></div>
+    </section>
+
+    <!-- ⑧ 预测 -->
+    <section class="card" id="sec-pred">
+      <h2>⑧ 业务预测与适用范围</h2>
+      <p class="sec-sub">预测范围显式判定：温度/速度落在训练覆盖矩形内且工况有样本才标“覆盖内”；范围外标“外推”并说明原因。降秩情景不输出预测数字。</p>
+      <div class="pred-inputs">
+        <label>温度 (°C)<input type="number" id="pred-t" value="155" step="0.5"></label>
+        <label>速度 (m/min)<input type="number" id="pred-s" value="41" step="0.5"></label>
+        <label>工况
+          <select id="pred-c">
+            <option value="C1">C1 标准工况</option>
+            <option value="C2">C2 高湿工况</option>
+            <option value="C3">C3 低温工况</option>
+          </select>
+        </label>
+      </div>
+      <div id="pred-results" style="margin-top:12px"></div>
+      <p class="note" id="pred-domain"></p>
+      <div class="chart-wrap" id="chart-coverage"></div>
+      <div class="table-view"><table class="data-table"><thead><tr><th>测量编号</th><th>批次</th><th>温度 °C</th><th>速度 m/min</th></tr></thead><tbody id="coverage-table-view"></tbody></table></div>
+    </section>
+
+    <!-- ⑨ 原始记录 -->
+    <section class="card" id="sec-raw">
+      <h2>⑨ 原始测量记录（不可变）</h2>
+      <p class="sec-sub">排除情景中的批次以淡化行标示，数据本身始终保留。</p>
+      <div class="scroll-table">
+        <table class="data-table">
+          <thead><tr><th>测量编号</th><th>来源</th><th>批次</th><th>工况</th><th>温度 °C</th><th>速度 m/min</th><th>损耗 %</th><th>来源文件</th></tr></thead>
+          <tbody id="raw-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="app-footer">
+  方法口径：OLS 使用带列主元的 Householder QR，数值秩容差 1e-10；秩不足时不输出系数。稳健方案为 Huber IRLS（k=1.345，MAD 尺度）。
+  标准化、稳健尺度/权重、验证划分均只使用训练批次。全部数据为虚构教学数据。
+</footer>
+
+<script src="js/rng.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/importer.js"></script>
+<script src="js/sample-data.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
